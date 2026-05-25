@@ -10,15 +10,13 @@ import {
 } from '@renderer/features/tasks/task-view-context';
 import { useTabShortcuts } from '@renderer/lib/hooks/useTabShortcuts';
 import { rpc } from '@renderer/lib/ipc';
-import { panelDragStore } from '@renderer/lib/layout/panel-drag-store';
 import { Button } from '@renderer/lib/ui/button';
 import { EmptyState } from '@renderer/lib/ui/empty-state';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@renderer/lib/ui/resizable';
 import { BoundShortcut } from '@renderer/lib/ui/shortcut';
 import { useIsActiveTask } from '../hooks/use-is-active-task';
-import { TerminalDrawerSidebar } from './terminal-drawer-sidebar';
 import { resolveTerminalPanelActiveItem } from './terminal-panel-selection';
 import { TerminalPtyContent } from './terminal-pty-content';
+import { TerminalTopTabs } from './terminal-top-tabs';
 
 export const TerminalsPanel = observer(function TerminalsPanel() {
   const { projectId, taskId } = useTaskViewContext();
@@ -47,6 +45,7 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
   });
 
   const activeTerminalId = activeItem.kind === 'terminal' ? activeItem.id : undefined;
+  const activeScriptId = activeItem.kind === 'script' ? activeItem.id : undefined;
 
   const activeSession =
     activeItem.kind === 'terminal'
@@ -116,10 +115,8 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
   );
 
   return (
-    <ResizablePanelGroup
-      orientation="horizontal"
-      id="terminal-drawer-inner"
-      className="h-full"
+    <div
+      className="flex h-full flex-col overflow-hidden bg-background"
       onFocus={() => {
         setIsPanelFocused(true);
         taskView.setFocusedRegion('bottom');
@@ -130,7 +127,32 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
         }
       }}
     >
-      <ResizablePanel id="terminal-drawer-pty" minSize="30%">
+      <TerminalTopTabs
+        projectId={projectId}
+        terminalTabView={terminalTabView}
+        lifecycleScriptsMgr={lifecycleScriptsMgr}
+        activeTerminalId={activeTerminalId}
+        activeScriptId={activeScriptId}
+        onSelectTerminal={(id) => {
+          terminalTabView.setActiveTab(id);
+          taskView.setTerminalDrawerActiveItem({ kind: 'terminal', id });
+          if (!taskView.isTerminalDrawerOpen) taskView.setTerminalDrawerOpen(true);
+        }}
+        onRemoveTerminal={(id) => terminalTabView.removeTab(id)}
+        onRenameTerminal={(id, name) => void terminalMgr?.renameTerminal(id, name)}
+        onHoverTerminal={handleHoverTerminal}
+        onSelectScript={(id) => {
+          lifecycleScriptsMgr?.setActiveTab(id);
+          taskView.setTerminalDrawerActiveItem({ kind: 'script', id });
+          if (!taskView.isTerminalDrawerOpen) taskView.setTerminalDrawerOpen(true);
+        }}
+        onRunScript={handleRunScript}
+        onStopScript={handleStopScript}
+        onAddTerminal={() => void handleCreate()}
+        isOpen={taskView.isTerminalDrawerOpen}
+        onToggleOpen={() => taskView.setTerminalDrawerOpen(!taskView.isTerminalDrawerOpen)}
+      />
+      <div className="min-h-0 flex-1">
         <TerminalPtyContent
           className="h-full"
           activeSession={activeSession}
@@ -140,40 +162,7 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
           emptyState={emptyState}
           remoteConnectionId={remoteConnectionId}
         />
-      </ResizablePanel>
-      <ResizableHandle
-        onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId);
-          panelDragStore.setDragging(true);
-        }}
-        className="bg-transparent hover:bg-background-2"
-        onPointerUp={() => panelDragStore.setDragging(false)}
-        onPointerCancel={() => panelDragStore.setDragging(false)}
-      />
-      <ResizablePanel id="terminal-drawer-sidebar" defaultSize="25%" minSize="150px" maxSize="50%">
-        <TerminalDrawerSidebar
-          className="h-full"
-          projectId={projectId}
-          lifecycleScriptsMgr={lifecycleScriptsMgr}
-          activeScriptId={activeItem.kind === 'script' ? activeItem.id : undefined}
-          onSelectScript={(id) => {
-            lifecycleScriptsMgr?.setActiveTab(id);
-            taskView.setTerminalDrawerActiveItem({ kind: 'script', id });
-          }}
-          onRunScript={handleRunScript}
-          onStopScript={handleStopScript}
-          terminalTabView={terminalTabView}
-          activeTerminalId={activeTerminalId}
-          onSelectTerminal={(id) => {
-            terminalTabView.setActiveTab(id);
-            taskView.setTerminalDrawerActiveItem({ kind: 'terminal', id });
-          }}
-          onAddTerminal={() => void handleCreate()}
-          onRemoveTerminal={(id) => terminalTabView.removeTab(id)}
-          onRenameTerminal={(id, name) => void terminalMgr?.renameTerminal(id, name)}
-          onHoverTerminal={handleHoverTerminal}
-        />
-      </ResizablePanel>
-    </ResizablePanelGroup>
+      </div>
+    </div>
   );
 });

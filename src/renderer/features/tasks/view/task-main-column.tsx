@@ -40,7 +40,7 @@ export const TaskMainColumn = observer(function TaskMainColumn() {
         id="task-terminal-drawer"
         panelRef={bottomPanelRef}
         collapsible
-        collapsedSize="0%"
+        collapsedSize="41px"
         defaultSize="25%"
         minSize="15%"
         onResize={(_panelSize, _id, prevPanelSize) => {
