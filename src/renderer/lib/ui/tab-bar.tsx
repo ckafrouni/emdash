@@ -143,7 +143,7 @@ export const TabBar = observer(function TabBar<TEntity>({
   };
 
   return (
-    <div className="flex h-[41px] items-center justify-between border-b border-border bg-background-secondary">
+    <div className="flex h-10 items-center justify-between border-b border-border bg-background-secondary">
       {onReorder ? (
         <ReorderList
           items={tabs}

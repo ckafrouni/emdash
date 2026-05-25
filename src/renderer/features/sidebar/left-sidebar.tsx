@@ -95,10 +95,10 @@ export const LeftSidebar: React.FC = observer(function LeftSidebar() {
             </SidebarMenuButton>
           </SidebarMenu>
         </SidebarFooter>
-        <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
+        <div className="flex h-10 items-center justify-between gap-2 border-t border-border px-3">
           <button
             type="button"
-            className="flex h-6 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-foreground-muted focus:outline-none focus-visible:outline-none"
+            className="flex h-full w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-foreground-muted focus:outline-none focus-visible:outline-none"
             onClick={() => showFeedbackModal({})}
           >
             <MessageSquareShare className="size-4 shrink-0" />

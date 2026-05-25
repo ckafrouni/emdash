@@ -1,25 +1,52 @@
 import { useHotkey } from '@tanstack/react-hotkeys';
-import { Columns2, FileSearch, MessageSquarePlus } from 'lucide-react';
+import { Columns2, Plus } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
+import { useCallback } from 'react';
+import { getProjectSshConnectionId } from '@renderer/features/projects/stores/project-selectors';
 import { useAppSettingsKey } from '@renderer/features/settings/use-app-settings-key';
+import { useAgentAutoApproveDefaults } from '@renderer/features/tasks/hooks/useAgentAutoApproveDefaults';
+import { conversationRegistry } from '@renderer/features/tasks/stores/conversation-registry';
+import AgentLogo from '@renderer/lib/components/agent-logo';
+import { useAgentAvailability } from '@renderer/lib/components/agent-selector/use-agent-availability';
 import {
   getEffectiveHotkey,
   getHotkeyRegistration,
 } from '@renderer/lib/hooks/useKeyboardShortcuts';
-import { useShowModal } from '@renderer/lib/modal/modal-provider';
 import { Button } from '@renderer/lib/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@renderer/lib/ui/dropdown-menu';
 import { BoundShortcut } from '@renderer/lib/ui/shortcut';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/lib/ui/tooltip';
+import { agentConfig } from '@renderer/utils/agentConfig';
+import type { AgentProviderId } from '@shared/agent-provider-registry';
+import { nextDefaultConversationTitle } from '../../conversations/conversation-title-utils';
 import { useTabGroupContext } from '../../tabs/tab-group-context';
 import { useTaskViewContext, useWorkspaceViewModel } from '../../task-view-context';
 
-export const TabBarActions = observer(function TabBarActions() {
+interface TabBarActionsProps {
+  newConversationOpen: boolean;
+  onNewConversationOpenChange: (open: boolean) => void;
+}
+
+export const TabBarActions = observer(function TabBarActions({
+  newConversationOpen,
+  onNewConversationOpenChange,
+}: TabBarActionsProps) {
   const taskView = useWorkspaceViewModel();
-  const { projectId, taskId, workspaceId } = useTaskViewContext();
+  const { projectId, taskId } = useTaskViewContext();
   const { groupId, tabManager } = useTabGroupContext();
   const { tabGroupManager } = taskView;
-  const showCommandPalette = useShowModal('commandPaletteModal');
-  const showCreateConversationModal = useShowModal('createConversationModal');
+
+  const connectionId = getProjectSshConnectionId(projectId);
+  const { groups } = useAgentAvailability({ connectionId, value: null });
+  const installedAgents =
+    groups.find((g) => g.value === 'installed')?.items.filter((item) => !item.disabled) ?? [];
+  const conversationMgr = conversationRegistry.get(taskId);
+  const autoApproveDefaults = useAgentAutoApproveDefaults();
 
   const isFocusedPane =
     taskView.focusedRegion === 'main' && tabGroupManager.activeGroupId === groupId;
@@ -38,42 +65,80 @@ export const TabBarActions = observer(function TabBarActions() {
     }
   );
 
+  const handleSelectAgent = useCallback(
+    async (agentId: AgentProviderId) => {
+      if (!conversationMgr) return;
+      const id = crypto.randomUUID();
+      const title = nextDefaultConversationTitle(
+        agentId,
+        Array.from(conversationMgr.conversations.values(), (c) => c.data)
+      );
+      try {
+        await conversationMgr.createConversation({
+          projectId,
+          taskId,
+          id,
+          autoApprove: autoApproveDefaults.getDefault(agentId),
+          provider: agentId,
+          title,
+        });
+        tabManager.openConversation(id);
+      } finally {
+        onNewConversationOpenChange(false);
+      }
+    },
+    [
+      autoApproveDefaults,
+      conversationMgr,
+      onNewConversationOpenChange,
+      projectId,
+      tabManager,
+      taskId,
+    ]
+  );
+
   return (
     <div className="flex h-full shrink-0 items-center px-2">
-      <Tooltip>
-        <TooltipTrigger>
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            onClick={() =>
-              showCreateConversationModal({
-                projectId,
-                taskId,
-                onSuccess: ({ conversationId }) => tabManager.openConversation(conversationId),
-              })
+      <DropdownMenu open={newConversationOpen} onOpenChange={onNewConversationOpenChange}>
+        <Tooltip>
+          <DropdownMenuTrigger
+            render={
+              <TooltipTrigger
+                render={
+                  <Button size="icon-sm" variant="ghost" aria-label="New conversation">
+                    <Plus className="size-3.5" />
+                  </Button>
+                }
+              />
             }
-          >
-            <MessageSquarePlus className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          New Conversations <BoundShortcut settingsKey="newConversation" variant="badge" />
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger>
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            onClick={() =>
-              showCommandPalette({ projectId, taskId, workspaceId: workspaceId ?? undefined })
-            }
-          >
-            <FileSearch className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Open File</TooltipContent>
-      </Tooltip>
+          />
+          <TooltipContent>
+            New Conversation <BoundShortcut settingsKey="newConversation" variant="badge" />
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end" className="min-w-44">
+          {installedAgents.map((item) => {
+            const config = agentConfig[item.agentId];
+            return (
+              <DropdownMenuItem
+                key={item.value}
+                onClick={() => void handleSelectAgent(item.agentId)}
+              >
+                {config && (
+                  <AgentLogo
+                    logo={config.logo}
+                    alt={config.alt}
+                    isSvg={config.isSvg}
+                    invertInDark={config.invertInDark}
+                    className="size-4 rounded-sm"
+                  />
+                )}
+                <span>{item.label}</span>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
       {tabGroupManager.groups.length < 3 && (
         <Tooltip>
           <TooltipTrigger>

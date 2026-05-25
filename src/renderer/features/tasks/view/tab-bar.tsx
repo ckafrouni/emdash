@@ -1,5 +1,5 @@
 import { observer } from 'mobx-react-lite';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTabGroupContext } from '@renderer/features/tasks/tabs/tab-group-context';
 import {
   useConversations,
@@ -61,6 +61,7 @@ export const TabBar = observer(function TabBar() {
   const { tabGroupManager } = taskView;
   const conversations = useConversations();
   const tabRenderers = makeTabRenderers(tabManager, conversations);
+  const [newConversationOpen, setNewConversationOpen] = useState(false);
 
   const isFocusedPane =
     taskView.focusedRegion === 'main' && tabGroupManager.activeGroupId === groupId;
@@ -81,12 +82,15 @@ export const TabBar = observer(function TabBar() {
   }, [tabManager.activeTabId]);
 
   return (
-    <div className="task-tab-bar flex h-[41px] shrink-0 items-center justify-between border-b border-border bg-background-secondary">
+    <div className="task-tab-bar flex h-10 shrink-0 items-center justify-between border-b border-border bg-background-secondary">
       <div ref={scrollContainerRef} className="flex h-full w-full overflow-x-auto">
         {resolvedTabs.map((tab) => tabRenderers[tab.kind](tab as never))}
-        <PaneDropZone groupId={groupId} />
+        <PaneDropZone groupId={groupId} onDoubleClick={() => setNewConversationOpen(true)} />
       </div>
-      <TabBarActions />
+      <TabBarActions
+        newConversationOpen={newConversationOpen}
+        onNewConversationOpenChange={setNewConversationOpen}
+      />
     </div>
   );
 });

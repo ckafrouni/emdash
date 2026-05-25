@@ -26,7 +26,7 @@ export function ModalContextBar({
 
   return (
     <TooltipProvider>
-      <div className="flex h-[41px] items-center gap-2 border-t border-border px-2">
+      <div className="flex h-10 items-center gap-2 border-t border-border px-2">
         <PromptActionsMenu
           actions={promptActions}
           disabled={false}

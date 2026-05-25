@@ -74,7 +74,7 @@ export const TerminalTopTabs = observer(function TerminalTopTabs({
   return (
     <div
       className={cn(
-        'flex h-[41px] shrink-0 items-stretch bg-background-2 text-xs',
+        'flex h-10 shrink-0 items-stretch bg-background-2 text-xs',
         !isOpen && 'border-t border-border-1',
         className
       )}

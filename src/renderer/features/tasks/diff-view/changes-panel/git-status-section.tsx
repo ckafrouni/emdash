@@ -55,8 +55,8 @@ export const GitStatusSection = observer(function GitStatusSection() {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col gap-2 border-t border-border p-2">
-        <div className="flex items-center justify-between gap-2 text-foreground-muted">
+      <div className="flex h-10 items-center border-t border-border px-2">
+        <div className="flex h-full w-full items-center justify-between gap-2 text-foreground-muted">
           <Tooltip>
             <TooltipTrigger className="flex min-w-0 items-center gap-2">
               <GitBranch className="size-3 shrink-0" />

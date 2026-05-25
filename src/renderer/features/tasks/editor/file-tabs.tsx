@@ -57,7 +57,7 @@ export const FileTabs: React.FC<FileTabsProps> = ({
   );
 
   return (
-    <div className="task-tab-bar flex h-[41px] shrink-0 border-b border-border bg-[var(--task-tab-background)]">
+    <div className="task-tab-bar flex h-10 shrink-0 border-b border-border bg-[var(--task-tab-background)]">
       {onReorder ? (
         <ReorderList
           items={tabs}
