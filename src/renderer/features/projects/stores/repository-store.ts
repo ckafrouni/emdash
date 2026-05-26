@@ -30,7 +30,7 @@ export class RepositoryStore {
   constructor(
     private readonly projectId: string,
     private readonly settingsStore: ProjectSettingsStore,
-    private readonly baseRef: string,
+    readonly baseRef: string,
     private readonly workspaceId?: string
   ) {
     this.localData = new Resource<LocalBranchesPayload, GitRefChange>(

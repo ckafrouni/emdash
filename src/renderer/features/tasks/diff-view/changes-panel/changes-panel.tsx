@@ -29,7 +29,7 @@ export const ChangesPanel = observer(function ChangesPanel() {
         <ResizablePanel
           id="changes-all"
           minSize="200px"
-          defaultSize="70%"
+          defaultSize="50%"
           className="flex flex-col overflow-hidden"
         >
           <ChangesSection />
@@ -46,7 +46,7 @@ export const ChangesPanel = observer(function ChangesPanel() {
           collapsedSize={SECTION_HEADER_HEIGHT}
           minSize="150px"
           maxSize="60%"
-          defaultSize="30%"
+          defaultSize="50%"
           className={`flex flex-col overflow-hidden ${panelTransitionClass || ''}`}
         >
           <PullRequestsSection

@@ -45,38 +45,29 @@ export function CheckRunItem({ check }: { check: CheckRun }) {
   const subtitle = check.appName ?? check.workflowName;
   const detailsUrl = check.detailsUrl;
   return (
-    <div className="group relative flex items-center gap-2 rounded-md px-3 py-2 hover:bg-background-1">
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <BucketIcon bucket={bucket} />
-          <div className="truncate text-sm">{check.name}</div>
-          {check.appLogoUrl ? (
-            <img
-              src={check.appLogoUrl}
-              alt={check.appName ?? ''}
-              className="size-4 shrink-0 rounded opacity-60"
-            />
-          ) : null}
-        </div>
-        {subtitle && (
-          <div className="flex w-full justify-start truncate text-xs text-foreground-passive">
-            {subtitle}
-          </div>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {duration && <span className="text-xs text-foreground-passive">{duration}</span>}
-        {detailsUrl && (
-          <button
-            type="button"
-            aria-label={`Open ${check.name} check details`}
-            className="absolute top-1/2 right-3 hidden -translate-y-1/2 items-center justify-center rounded bg-background-1 px-1 py-0.5 text-foreground-muted group-hover:flex hover:text-foreground"
-            onClick={() => void rpc.app.openExternal(detailsUrl)}
-          >
-            <ExternalLink className="size-3.5" />
-          </button>
-        )}
-      </div>
+    <div className="group relative flex items-center gap-2 rounded-md px-2 py-0.5 text-sm hover:bg-background-1">
+      <BucketIcon bucket={bucket} />
+      <span className="truncate">{check.name}</span>
+      {subtitle && <span className="truncate text-xs text-foreground-passive">{subtitle}</span>}
+      <span className="flex-1" />
+      {check.appLogoUrl ? (
+        <img
+          src={check.appLogoUrl}
+          alt={check.appName ?? ''}
+          className="size-3.5 shrink-0 rounded opacity-60"
+        />
+      ) : null}
+      {duration && <span className="shrink-0 text-xs text-foreground-passive">{duration}</span>}
+      {detailsUrl && (
+        <button
+          type="button"
+          aria-label={`Open ${check.name} check details`}
+          className="absolute top-1/2 right-2 hidden -translate-y-1/2 items-center justify-center rounded bg-background-1 px-1 py-0.5 text-foreground-muted group-hover:flex hover:text-foreground"
+          onClick={() => void rpc.app.openExternal(detailsUrl)}
+        >
+          <ExternalLink className="size-3.5" />
+        </button>
+      )}
     </div>
   );
 }

@@ -5,6 +5,10 @@ import type { GitChange } from '@shared/git';
 export const commitFilesQueryKey = (projectId: string, workspaceId: string, commitHash: string) =>
   [projectId, workspaceId, 'commit-files', commitHash] as const;
 
+/**
+ * Files changed by a single commit (`git diff-tree --first-parent <hash>`).
+ * Used when the user picks a specific commit in the changes source dropdown.
+ */
 export function useCommitFiles(
   projectId: string,
   workspaceId: string,
@@ -19,6 +23,6 @@ export function useCommitFiles(
       return result.data.files;
     },
     enabled,
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
   });
 }

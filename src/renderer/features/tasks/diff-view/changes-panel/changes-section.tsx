@@ -1,6 +1,6 @@
 import { Minus, Plus, Undo2 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   useTaskViewContext,
   useWorkspace,
@@ -10,19 +10,49 @@ import {
 import { useShowModal } from '@renderer/lib/modal/modal-provider';
 import { Button } from '@renderer/lib/ui/button';
 import { EmptyState } from '@renderer/lib/ui/empty-state';
-import { commitRef, type GitChange, HEAD_REF } from '@shared/git';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@renderer/lib/ui/select';
+import { commitRef, HEAD_REF, type Commit, type GitChange } from '@shared/git';
+import type { ActiveFile } from '@shared/view-state';
 import { ActionCard } from './components/action-card';
 import { ChangesListOrTree } from './components/changes-list-or-tree';
 import { ChangesViewModeToggle } from './components/changes-view-mode-toggle';
 import { CommitCard } from './components/commit-card';
 import { SectionHeader } from './components/section-header';
+import { useBranchCommits } from './hooks/use-branch-commits';
+import { useBranchFiles } from './hooks/use-branch-files';
 import { useChangesViewMode } from './hooks/use-changes-view-mode';
+import { useCommitFiles } from './hooks/use-commit-files';
 import { usePrefetchDiffModels } from './hooks/use-prefetch-diff-models';
 
 /** Unified row spanning the file's staged + unstaged halves. */
 interface CombinedChange extends GitChange {
   hasStaged: boolean;
   hasUnstaged: boolean;
+}
+
+type ChangesSource = { kind: 'all' } | { kind: 'uncommitted' } | { kind: 'commit'; hash: string };
+
+const COMMIT_VALUE_PREFIX = 'commit:';
+
+function encodeSource(source: ChangesSource): string {
+  if (source.kind === 'commit') return `${COMMIT_VALUE_PREFIX}${source.hash}`;
+  return source.kind;
+}
+
+function decodeSource(value: string): ChangesSource {
+  if (value === 'uncommitted') return { kind: 'uncommitted' };
+  if (value.startsWith(COMMIT_VALUE_PREFIX)) {
+    return { kind: 'commit', hash: value.slice(COMMIT_VALUE_PREFIX.length) };
+  }
+  return { kind: 'all' };
+}
+
+function shortHash(hash: string): string {
+  return hash.slice(0, 7);
+}
+
+function commitLabel(commit: Commit): string {
+  return commit.subject || `(no message) ${shortHash(commit.hash)}`;
 }
 
 export const ChangesSection = observer(function ChangesSection() {
@@ -34,6 +64,23 @@ export const ChangesSection = observer(function ChangesSection() {
   const diffView = taskView.diffView;
   const changesView = diffView?.changesView;
 
+  const [source, setSource] = useState<ChangesSource>({ kind: 'all' });
+
+  const baseRef = workspace.repository.baseRef;
+  const branchCommitsQuery = useBranchCommits(projectId, workspaceId, baseRef);
+  const branchCommits = branchCommitsQuery.data ?? [];
+  const branchFilesQuery = useBranchFiles(projectId, workspaceId, baseRef);
+  const commitHash = source.kind === 'commit' ? source.hash : '';
+  const commitFilesQuery = useCommitFiles(
+    projectId,
+    workspaceId,
+    commitHash,
+    source.kind === 'commit'
+  );
+
+  // Uncommitted (staged + unstaged) — current ChangesSection behavior, kept
+  // as the data source for the "Uncommitted" option and as the working-tree
+  // shadow that drives staging UI.
   const combinedChanges = useMemo<CombinedChange[]>(() => {
     const m = new Map<string, { staged?: GitChange; unstaged?: GitChange }>();
     for (const c of git.stagedFileChanges) m.set(c.path, { ...m.get(c.path), staged: c });
@@ -53,15 +100,15 @@ export const ChangesSection = observer(function ChangesSection() {
     return out;
   }, [git.stagedFileChanges, git.unstagedFileChanges]);
 
-  const hasChanges = combinedChanges.length > 0;
+  // The visible file list per source.
+  const displayChanges: GitChange[] = useMemo(() => {
+    if (source.kind === 'uncommitted') return combinedChanges;
+    if (source.kind === 'commit') return commitFilesQuery.data ?? [];
+    return branchFilesQuery.data ?? [];
+  }, [source, combinedChanges, branchFilesQuery.data, commitFilesQuery.data]);
 
-  // Active path matches whichever diff group is open.
-  const activeDescriptor = taskView.tabManager.activeDescriptor;
-  const activePath =
-    activeDescriptor?.kind === 'diff' &&
-    (activeDescriptor.diffGroup === 'disk' || activeDescriptor.diffGroup === 'staged')
-      ? activeDescriptor.path
-      : undefined;
+  const hasChanges = displayChanges.length > 0;
+  const isUncommittedMode = source.kind === 'uncommitted';
 
   const prefetchDisk = usePrefetchDiffModels(projectId, workspaceId, 'disk', HEAD_REF);
   const prefetchStaged = usePrefetchDiffModels(projectId, workspaceId, 'staged', HEAD_REF);
@@ -70,12 +117,23 @@ export const ChangesSection = observer(function ChangesSection() {
 
   if (!diffView || !changesView) return null;
 
+  // Active path matches whichever diff group is open.
+  const activeDescriptor = taskView.tabManager.activeDescriptor;
+  const activePath =
+    activeDescriptor?.kind === 'diff' &&
+    (activeDescriptor.diffGroup === 'disk' ||
+      activeDescriptor.diffGroup === 'staged' ||
+      activeDescriptor.diffGroup === 'git')
+      ? activeDescriptor.path
+      : undefined;
+
   const meta = (path: string): CombinedChange | undefined =>
     combinedChanges.find((c) => c.path === path);
 
   // Selection is the union of unstaged + staged selections; toggling a row
   // toggles whichever halves the file has.
   const isSelected = (path: string): boolean => {
+    if (!isUncommittedMode) return false;
     const m = meta(path);
     if (!m) return false;
     return (
@@ -85,6 +143,7 @@ export const ChangesSection = observer(function ChangesSection() {
   };
 
   const toggleSelect = (path: string): void => {
+    if (!isUncommittedMode) return;
     const m = meta(path);
     if (!m) return;
     const selected = isSelected(path);
@@ -98,6 +157,7 @@ export const ChangesSection = observer(function ChangesSection() {
   };
 
   const toggleAll = (): void => {
+    if (!isUncommittedMode) return;
     const total = combinedChanges.length;
     const selectedCount = combinedChanges.filter((c) => isSelected(c.path)).length;
     if (selectedCount === total) {
@@ -112,6 +172,7 @@ export const ChangesSection = observer(function ChangesSection() {
   };
 
   const selectionState: 'all' | 'none' | 'partial' = (() => {
+    if (!isUncommittedMode) return 'none';
     const total = combinedChanges.length;
     const selected = combinedChanges.filter((c) => isSelected(c.path)).length;
     if (total === 0 || selected === 0) return 'none';
@@ -119,43 +180,62 @@ export const ChangesSection = observer(function ChangesSection() {
     return 'partial';
   })();
 
-  // Prefer the unstaged half when present (working-tree diff is the more
-  // common review target); fall back to the staged half otherwise.
-  const handleSelectChange = (change: GitChange) => {
-    const m = meta(change.path);
-    const isStaged = m ? !m.hasUnstaged && m.hasStaged : false;
-    taskView.tabManager.openDiffPreview(
-      {
+  // Open a diff with refs appropriate to the current source.
+  const buildActiveFile = (change: GitChange): ActiveFile | undefined => {
+    if (source.kind === 'uncommitted') {
+      const m = meta(change.path);
+      const isStaged = m ? !m.hasUnstaged && m.hasStaged : false;
+      return {
         path: change.path,
         type: isStaged ? 'git' : 'disk',
         group: isStaged ? 'staged' : 'disk',
         originalRef: commitRef('HEAD'),
-      },
-      change.status
-    );
+      };
+    }
+    if (source.kind === 'commit') {
+      const commit = branchCommits.find((c) => c.hash === source.hash);
+      const parentSha = commit?.parents[0] ?? null;
+      return {
+        path: change.path,
+        type: 'git',
+        group: 'git',
+        originalRef: commitRef(parentSha ?? `${source.hash}^`),
+        modifiedRef: commitRef(source.hash),
+        commitOriginalSha: parentSha,
+        commitModifiedSha: source.hash,
+      };
+    }
+    // "all" — compare the branch base against the working tree. Files with
+    // local edits keep the working-tree side; everything else is a pure
+    // ref-to-ref diff (no modifiedRef, the diff viewer falls back to HEAD).
+    if (!baseRef) return undefined;
+    const m = meta(change.path);
+    const hasWorkingTreeEdits = Boolean(m?.hasUnstaged);
+    return {
+      path: change.path,
+      type: hasWorkingTreeEdits ? 'disk' : 'git',
+      group: hasWorkingTreeEdits ? 'disk' : 'git',
+      originalRef: commitRef(baseRef),
+    };
   };
 
+  const handleSelectChange = (change: GitChange) => {
+    const active = buildActiveFile(change);
+    if (active) taskView.tabManager.openDiffPreview(active, change.status);
+  };
   const handleDoubleClickChange = (change: GitChange) => {
-    const m = meta(change.path);
-    const isStaged = m ? !m.hasUnstaged && m.hasStaged : false;
-    taskView.tabManager.openDiff(
-      {
-        path: change.path,
-        type: isStaged ? 'git' : 'disk',
-        group: isStaged ? 'staged' : 'disk',
-        originalRef: commitRef('HEAD'),
-      },
-      change.status
-    );
+    const active = buildActiveFile(change);
+    if (active) taskView.tabManager.openDiff(active, change.status);
   };
 
   const handlePrefetch = (change: GitChange) => {
+    if (!isUncommittedMode) return;
     const m = meta(change.path);
     if (m?.hasUnstaged) prefetchDisk(change.path);
     else if (m?.hasStaged) prefetchStaged(change.path);
   };
 
-  // Action handlers
+  // Staging actions — only available in Uncommitted mode.
   const handleStageSelection = () => {
     const paths = [...changesView.unstagedSelection];
     if (paths.length === 0) return;
@@ -204,20 +284,70 @@ export const ChangesSection = observer(function ChangesSection() {
   const hasStagedAny = git.stagedFileChanges.length > 0;
   const selectedCount = combinedChanges.filter((c) => isSelected(c.path)).length;
 
+  const labelSlot = (
+    <Select
+      value={encodeSource(source)}
+      onValueChange={(v) => {
+        if (typeof v === 'string') setSource(decodeSource(v));
+      }}
+    >
+      <SelectTrigger size="sm" className="h-7 w-auto gap-1.5 border-0 px-2 hover:bg-background-2">
+        <span className="truncate text-sm">
+          {source.kind === 'all'
+            ? 'All'
+            : source.kind === 'uncommitted'
+              ? 'Uncommitted'
+              : shortHash(source.hash)}
+        </span>
+      </SelectTrigger>
+      <SelectContent className="min-w-56">
+        <SelectItem value="all">
+          <span className="truncate">All</span>
+        </SelectItem>
+        <SelectItem value="uncommitted">
+          <span className="truncate">Uncommitted</span>
+        </SelectItem>
+        {branchCommits.map((c) => (
+          <SelectItem key={c.hash} value={`${COMMIT_VALUE_PREFIX}${c.hash}`}>
+            <span className="truncate">{commitLabel(c)}</span>
+            <span className="ml-2 shrink-0 font-mono text-xs text-foreground-muted">
+              {shortHash(c.hash)}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const emptyStateForMode = () => {
+    if (source.kind === 'uncommitted') {
+      return <EmptyState label="Working tree clean" description="No uncommitted file changes." />;
+    }
+    if (source.kind === 'commit') {
+      if (commitFilesQuery.isLoading) {
+        return <EmptyState label="Loading..." description="Fetching files for this commit." />;
+      }
+      return <EmptyState label="No files" description="This commit changed no files." />;
+    }
+    if (branchCommitsQuery.isLoading || branchFilesQuery.isLoading) {
+      return <EmptyState label="Loading..." description="Fetching files for this branch." />;
+    }
+    return <EmptyState label="No branch changes" description="This branch matches its base." />;
+  };
+
   return (
     <>
       <SectionHeader
         label="Changes"
-        count={combinedChanges.length}
-        selectionState={selectionState}
-        onToggleAll={toggleAll}
+        count={displayChanges.length}
+        labelSlot={labelSlot}
+        selectionState={isUncommittedMode ? selectionState : undefined}
+        onToggleAll={isUncommittedMode ? toggleAll : undefined}
         actions={<ChangesViewModeToggle value={viewMode} onChange={setViewMode} label="Changes" />}
       />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {!hasChanges && (
-          <EmptyState label="Working tree clean" description="No uncommitted file changes." />
-        )}
-        {hasChanges && (
+        {!hasChanges && emptyStateForMode()}
+        {hasChanges && isUncommittedMode && (
           <ActionCard
             selectedCount={selectedCount}
             selectionActions={
@@ -301,16 +431,16 @@ export const ChangesSection = observer(function ChangesSection() {
         <div className="min-h-0 flex-1 px-1">
           <ChangesListOrTree
             viewMode={viewMode}
-            changes={combinedChanges}
-            isSelected={isSelected}
-            onToggleSelect={toggleSelect}
+            changes={displayChanges}
+            isSelected={isUncommittedMode ? isSelected : undefined}
+            onToggleSelect={isUncommittedMode ? toggleSelect : undefined}
             activePath={activePath}
             onSelectChange={handleSelectChange}
             onDoubleClickChange={handleDoubleClickChange}
             onPrefetch={handlePrefetch}
           />
         </div>
-        {hasChanges && <CommitCard autoStage={!hasStagedAny} />}
+        {hasChanges && isUncommittedMode && <CommitCard autoStage={!hasStagedAny} />}
       </div>
     </>
   );

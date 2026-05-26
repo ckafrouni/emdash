@@ -48,7 +48,6 @@ export type DiffViewSnapshot = {
   viewMode: 'file';
   activeFile?: ActiveFile;
   commitAction: 'commit' | 'commit-push' | 'commit-pr' | null;
-  prTab?: 'files' | 'commits' | 'checks';
 };
 
 export type TerminalDrawerActiveItem =

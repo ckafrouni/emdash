@@ -7,10 +7,9 @@ import { EmptyState } from '@renderer/lib/ui/empty-state';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/lib/ui/tooltip';
 import { cn } from '@renderer/utils/utils';
 import { useTaskViewContext, useWorkspace, useWorkspaceViewModel } from '../../task-view-context';
-import { ChangesViewModeToggle } from './components/changes-view-mode-toggle';
+import { PrMergeAction } from './components/pr-entry/merge-action';
 import { PullRequestEntry } from './components/pr-entry/pr-entry';
 import { SectionHeader } from './components/section-header';
-import { useChangesViewMode } from './hooks/use-changes-view-mode';
 
 export const PullRequestsSection = observer(function PullRequestsSection({
   collapsed,
@@ -26,12 +25,11 @@ export const PullRequestsSection = observer(function PullRequestsSection({
   const repositoryUrl = workspace.repository.pullRequestRepositoryUrl;
   const pullRequests = prStore?.pullRequests ?? [];
   const currentPr = prStore?.currentPr;
+  const openPr = currentPr?.status === 'open' ? currentPr : undefined;
 
   const isRefreshing = repositoryUrl
     ? (getPrSyncStore(projectId)?.isSyncing(repositoryUrl) ?? false)
     : false;
-
-  const { mode: viewMode, setMode: setViewMode } = useChangesViewMode('pr');
 
   return (
     <>
@@ -42,11 +40,7 @@ export const PullRequestsSection = observer(function PullRequestsSection({
         onToggleCollapsed={onToggleCollapsed}
         actions={
           <>
-            <ChangesViewModeToggle
-              value={viewMode}
-              onChange={setViewMode}
-              label="Pull request files"
-            />
+            {openPr && <PrMergeAction pr={openPr} />}
             <Tooltip>
               <TooltipTrigger>
                 <Button
