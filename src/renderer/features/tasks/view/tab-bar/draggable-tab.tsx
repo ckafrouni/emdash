@@ -38,7 +38,11 @@ export function PaneDropZone({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `pane-drop-${groupId}` });
   return (
-    <div ref={setNodeRef} onDoubleClick={onDoubleClick} className="relative h-full flex-1">
+    <div
+      ref={setNodeRef}
+      onDoubleClick={onDoubleClick}
+      className="relative h-full flex-1 border-b border-border"
+    >
       {isOver && <DropIndicator />}
     </div>
   );

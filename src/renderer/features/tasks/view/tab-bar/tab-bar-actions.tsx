@@ -98,7 +98,7 @@ export const TabBarActions = observer(function TabBarActions({
   );
 
   return (
-    <div className="flex h-full shrink-0 items-center px-2">
+    <div className="flex h-full shrink-0 items-center border-b border-border px-2">
       <DropdownMenu open={newConversationOpen} onOpenChange={onNewConversationOpenChange}>
         <Tooltip>
           <DropdownMenuTrigger

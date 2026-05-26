@@ -46,12 +46,10 @@ const ReadyTaskRightSidebar = observer(function ReadyTaskRightSidebar() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
-      <div
-        role="tablist"
-        className="h-header-row flex shrink-0 items-stretch border-b border-border"
-      >
-        {TABS.map((tab) => {
+      <div role="tablist" className="h-header-row flex shrink-0 items-stretch">
+        {TABS.map((tab, i) => {
           const isActive = activeTab === tab.value;
+          const isLast = i === TABS.length - 1;
           return (
             <button
               key={tab.value}
@@ -63,9 +61,10 @@ const ReadyTaskRightSidebar = observer(function ReadyTaskRightSidebar() {
               }}
               className={cn(
                 'flex flex-1 items-center justify-center text-sm transition-colors',
+                !isLast && 'border-r border-border',
                 isActive
                   ? 'bg-background text-foreground'
-                  : 'bg-background-2 text-foreground-muted hover:text-foreground'
+                  : 'bg-background-2 text-foreground-muted hover:bg-background-3 hover:text-foreground border-b border-border'
               )}
             >
               {tab.label}
