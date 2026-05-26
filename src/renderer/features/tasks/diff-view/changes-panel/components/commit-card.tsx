@@ -9,7 +9,6 @@ import {
   useWorkspaceViewModel,
 } from '@renderer/features/tasks/task-view-context';
 import { useShowModal } from '@renderer/lib/modal/modal-provider';
-import { Input } from '@renderer/lib/ui/input';
 import { SplitButton, type SplitButtonAction } from '@renderer/lib/ui/split-button';
 import { Textarea } from '@renderer/lib/ui/textarea';
 
@@ -26,6 +25,11 @@ interface CommitCardProps {
   autoStage?: boolean;
 }
 
+/**
+ * Edge-to-edge commit composer — Zed-inspired. One textarea (subject + body
+ * separated by a blank line, git's own format), a split-button below, no
+ * surrounding card frame.
+ */
 export const CommitCard = observer(function CommitCard({ autoStage = false }: CommitCardProps) {
   const { projectId, taskId } = useTaskViewContext();
   const workspaceId = useWorkspaceId();
@@ -35,10 +39,8 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
   const diffView = taskView.diffView;
   const changesView = diffView?.changesView ?? null;
   const hasPRs = changesView?.expandedSections.pullRequests ?? false;
-  const [commitMessage, setCommitMessage] = useState('');
-  const [description, setDescription] = useState('');
+  const [message, setMessage] = useState('');
   const [phase, setPhase] = useState<CommitPhase>('idle');
-  const fullMessage = description ? `${commitMessage}\n\n${description}` : commitMessage;
   const isInFlight = phase !== 'idle';
 
   const showCreatePrModal = useShowModal('createPrModal');
@@ -50,42 +52,43 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
   const hasOpenPr = taskView.prStore?.pullRequests.some((p) => p.status === 'open') ?? false;
   const canCreatePr = Boolean(repositoryUrl) && Boolean(taskData?.taskBranch) && !hasOpenPr;
 
+  const trimmedMessage = message.trim();
+
+  const stageIfNeeded = async () => {
+    if (!autoStage) return;
+    changesView.suppressNextAutoExpand('staged');
+    await git.stageAllFiles();
+  };
+
+  const resetExpandedAfterCommit = () => {
+    if (autoStage) return;
+    changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
+  };
+
   const doCommit = async () => {
     setPhase('committing');
-    if (autoStage) {
-      changesView.suppressNextAutoExpand('staged');
-      await git.stageAllFiles();
-    }
-    const result = await git.commit(fullMessage);
+    await stageIfNeeded();
+    const result = await git.commit(trimmedMessage);
     if (!result.success) {
       setPhase('idle');
       return;
     }
-    setCommitMessage('');
-    setDescription('');
-    if (!autoStage) {
-      changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
-    }
+    setMessage('');
+    resetExpandedAfterCommit();
     setPhase('commit-only-done');
     setTimeout(() => setPhase('idle'), 3000);
   };
 
   const doCommitAndPush = async () => {
     setPhase('committing');
-    if (autoStage) {
-      changesView.suppressNextAutoExpand('staged');
-      await git.stageAllFiles();
-    }
-    const commitResult = await git.commit(fullMessage);
+    await stageIfNeeded();
+    const commitResult = await git.commit(trimmedMessage);
     if (!commitResult.success) {
       setPhase('idle');
       return;
     }
-    setCommitMessage('');
-    setDescription('');
-    if (!autoStage) {
-      changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
-    }
+    setMessage('');
+    resetExpandedAfterCommit();
     setPhase('committed');
     await new Promise((r) => setTimeout(r, 1000));
     setPhase('pushing');
@@ -100,20 +103,14 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
 
   const doCommitAndCreatePr = async () => {
     setPhase('committing');
-    if (autoStage) {
-      changesView.suppressNextAutoExpand('staged');
-      await git.stageAllFiles();
-    }
-    const commitResult = await git.commit(fullMessage);
+    await stageIfNeeded();
+    const commitResult = await git.commit(trimmedMessage);
     if (!commitResult.success) {
       setPhase('idle');
       return;
     }
-    setCommitMessage('');
-    setDescription('');
-    if (!autoStage) {
-      changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
-    }
+    setMessage('');
+    resetExpandedAfterCommit();
     setPhase('opening-pr');
     await new Promise((r) => setTimeout(r, 500));
     setPhase('idle');
@@ -147,21 +144,25 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
       ? 'commit-push'
       : diffView.effectiveCommitAction;
 
+  // Cmd/Ctrl+Enter triggers the currently selected action.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== 'Enter') return;
+    if (!(e.metaKey || e.ctrlKey)) return;
+    if (!trimmedMessage || isInFlight) return;
+    e.preventDefault();
+    const action = actions.find((a) => a.value === effectiveAction) ?? actions[0];
+    action?.action();
+  };
+
   return (
-    <div className="mx-2 mb-2 flex shrink-0 flex-col items-center justify-between gap-2 rounded-xl border border-border bg-background-1 p-2">
-      <Input
-        placeholder="Commit message"
-        autoFocus
-        className="w-full bg-background"
-        value={commitMessage}
-        onChange={(e) => setCommitMessage(e.target.value)}
-        disabled={isInFlight}
-      />
+    <div className="flex shrink-0 flex-col gap-1.5 border-t border-border bg-background-1 px-2 py-2">
       <Textarea
-        placeholder="Description"
-        className="w-full bg-background"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Commit message"
+        rows={3}
+        className="w-full resize-none bg-background"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={handleKeyDown}
         disabled={isInFlight}
       />
       {phase === 'idle' && (
@@ -169,7 +170,7 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
           actions={actions}
           size="sm"
           className="w-full"
-          disabled={!commitMessage.trim()}
+          disabled={!trimmedMessage}
           defaultValue={effectiveAction}
           onValueChange={(value) =>
             diffView.setCommitAction(value as 'commit' | 'commit-push' | 'commit-pr')
