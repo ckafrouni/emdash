@@ -32,6 +32,7 @@ export type SlotsContextValue = {
   WrapView: ComponentType<{ children: ReactNode } & Record<string, unknown>>;
   TitlebarSlot: ComponentType;
   MainPanel: ComponentType;
+  RightSidebar: ComponentType | null;
   currentView: ViewId;
   lastNonSettingsView: NonSettingsViewId;
 };
@@ -65,6 +66,7 @@ export function useWorkspaceSlots(): SlotsContextValue {
       >,
       TitlebarSlot: def.TitlebarSlot ?? (() => null),
       MainPanel: def.MainPanel,
+      RightSidebar: def.RightSidebar ?? null,
       currentView: resolvedViewId,
       lastNonSettingsView: appState.navigation.lastNonSettingsView,
     };

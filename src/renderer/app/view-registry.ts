@@ -25,6 +25,10 @@ export type ViewDefinition<TParams extends object = Record<never, never>> = {
   WrapView?: ComponentType<{ children: ReactNode } & TParams>;
   TitlebarSlot?: ComponentType;
   MainPanel: ComponentType;
+  /** Optional sidebar rendered at the workspace level, spanning the full
+   *  content height (above the titlebar). Only views that provide this slot
+   *  show a right sidebar; others render the main column at full width. */
+  RightSidebar?: ComponentType;
   /**
    * Factory called by Workspace whenever this view becomes active.
    * The returned CommandProvider is registered in commandRegistry and

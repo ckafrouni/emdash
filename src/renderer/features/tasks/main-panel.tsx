@@ -1,20 +1,12 @@
 import { Loader2 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
-import { useEffect } from 'react';
-import { usePanelRef } from 'react-resizable-panels';
 import {
   getTaskStore,
   taskErrorMessage,
   taskViewKind,
 } from '@renderer/features/tasks/stores/task-selectors';
-import {
-  useTaskViewContext,
-  useWorkspaceViewModel,
-} from '@renderer/features/tasks/task-view-context';
-import { panelDragStore } from '@renderer/lib/layout/panel-drag-store';
-import { ResizablePanel, ResizablePanelGroup } from '@renderer/lib/ui/resizable';
-import { DraggableResizeHandle, TaskMainColumn } from './view/task-main-column';
-import { TaskSidebar } from './view/task-sidebar';
+import { useTaskViewContext } from '@renderer/features/tasks/task-view-context';
+import { TaskMainColumn } from './view/task-main-column';
 import { WorkspaceResolutionView } from './workspace-resolution-view';
 
 export const TaskMainPanel = observer(function TaskMainPanel() {
@@ -98,44 +90,5 @@ export const TaskMainPanel = observer(function TaskMainPanel() {
     return <WorkspaceResolutionView />;
   }
 
-  return <ReadyTaskMainPanel />;
-});
-
-const SIDEBAR_COLLAPSED_SIZE = '0px';
-
-const ReadyTaskMainPanel = observer(function ReadyTaskMainPanel() {
-  const taskView = useWorkspaceViewModel();
-  const sidebarPanelRef = usePanelRef();
-
-  useEffect(() => {
-    panelDragStore.suppressFor(140);
-    if (taskView.isSidebarCollapsed) {
-      sidebarPanelRef.current?.collapse();
-    } else {
-      sidebarPanelRef.current?.expand();
-    }
-  }, [taskView.isSidebarCollapsed, sidebarPanelRef]);
-
-  return (
-    <ResizablePanelGroup orientation="horizontal" id="task-sidebar-layout">
-      <ResizablePanel id="task-main-area">
-        <TaskMainColumn />
-      </ResizablePanel>
-      <DraggableResizeHandle />
-      <ResizablePanel
-        id="task-sidebar"
-        panelRef={sidebarPanelRef}
-        defaultSize="25%"
-        minSize="280px"
-        maxSize="50%"
-        collapsible
-        collapsedSize={SIDEBAR_COLLAPSED_SIZE}
-        onResize={() =>
-          taskView.setSidebarCollapsed(sidebarPanelRef.current?.isCollapsed() ?? false)
-        }
-      >
-        <TaskSidebar />
-      </ResizablePanel>
-    </ResizablePanelGroup>
-  );
+  return <TaskMainColumn />;
 });

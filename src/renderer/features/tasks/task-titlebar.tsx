@@ -2,13 +2,10 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
-  Clock,
-  FileDiff,
-  FolderOpen,
   GitBranch,
+  PanelRight,
   Pin,
   RefreshCcw,
-  Terminal,
 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import {
@@ -36,17 +33,13 @@ import { Badge } from '@renderer/lib/ui/badge';
 import { Button } from '@renderer/lib/ui/button';
 import { MicroLabel } from '@renderer/lib/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/lib/ui/popover';
-import { Separator } from '@renderer/lib/ui/separator';
 import { BoundShortcut } from '@renderer/lib/ui/shortcut';
 import { Toggle } from '@renderer/lib/ui/toggle';
-import { ToggleGroup, ToggleGroupItem } from '@renderer/lib/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/lib/ui/tooltip';
-import { formatDiffLineCount } from '@renderer/utils/format-diff-line-count';
 import { cn } from '@renderer/utils/utils';
 import type { Issue } from '@shared/tasks';
 import { DevServerPills } from './components/dev-server-pills';
 import { IssueSelector, ProviderLogo } from './components/issue-selector/issue-selector';
-import { type SidebarTab } from './types';
 import { useGitActions } from './use-git-actions';
 
 export const TaskTitlebar = observer(function TaskTitlebar() {
@@ -119,10 +112,6 @@ const ActiveTaskTitlebar = observer(function ActiveTaskTitlebar({
     isPulling,
     isPushing,
   } = useGitActions(projectId, taskId);
-
-  const linesAdded = workspace.git.totalLinesAdded;
-  const linesDeleted = workspace.git.totalLinesDeleted;
-  const hasDiffStats = linesAdded > 0 || linesDeleted > 0;
 
   const projectStore = asMounted(getProjectStore(projectId));
 
@@ -312,96 +301,23 @@ const ActiveTaskTitlebar = observer(function ActiveTaskTitlebar({
           {!isRemoteProject && (
             <OpenInMenu path={workspace.path} className="h-7 bg-transparent" borderless />
           )}
-          <Separator orientation="vertical" className="h-5 self-center!" />
           <Tooltip>
             <TooltipTrigger>
               <Toggle
                 size="sm"
-                pressed={taskView.isTerminalDrawerOpen}
+                pressed={!taskView.isSidebarCollapsed}
                 className="border-none"
-                onPressedChange={() =>
-                  taskView.setTerminalDrawerOpen(!taskView.isTerminalDrawerOpen)
-                }
+                aria-label="Toggle right sidebar"
+                onPressedChange={() => taskView.setSidebarCollapsed(!taskView.isSidebarCollapsed)}
               >
-                <Terminal className="size-3.5" />
+                <PanelRight className="size-3.5" />
               </Toggle>
             </TooltipTrigger>
             <TooltipContent>
-              Toggle terminal <BoundShortcut settingsKey="toggleTerminalDrawer" variant="badge" />
+              Toggle right sidebar{' '}
+              <BoundShortcut settingsKey="toggleRightSidebar" variant="badge" />
             </TooltipContent>
           </Tooltip>
-          <Separator orientation="vertical" className="h-5 self-center!" />
-          <ToggleGroup
-            value={taskView.isSidebarCollapsed ? [] : [taskView.sidebarTab]}
-            onValueChange={([tab]) => {
-              if (!tab) {
-                taskView.setSidebarCollapsed(true);
-              } else {
-                taskView.setSidebarTab(tab as SidebarTab);
-                taskView.setSidebarCollapsed(false);
-              }
-            }}
-            size="icon-sm"
-            className="border-none bg-transparent"
-          >
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <ToggleGroupItem
-                    value="changes"
-                    aria-label="Changes"
-                    className={cn('w-auto! min-w-7! gap-0', hasDiffStats && 'w-full px-2!')}
-                  >
-                    <FileDiff className="size-3.5" />
-                    <span
-                      className={cn(
-                        'overflow-hidden transition-[max-width,padding-left] duration-500 ease-in-out flex items-center tabular-nums text-xs leading-none gap-1',
-                        hasDiffStats ? 'max-w-20 pl-1' : 'max-w-0 pl-0'
-                      )}
-                    >
-                      {linesAdded > 0 && (
-                        <span className="text-foreground-diff-added">
-                          +{formatDiffLineCount(linesAdded)}
-                        </span>
-                      )}
-                      {linesDeleted > 0 && (
-                        <span className="text-foreground-diff-deleted">
-                          -{formatDiffLineCount(linesDeleted)}
-                        </span>
-                      )}
-                    </span>
-                  </ToggleGroupItem>
-                }
-              />
-              <TooltipContent>
-                Changes <BoundShortcut settingsKey="sidebarChanges" variant="badge" />
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <ToggleGroupItem size="icon-sm" value="files" aria-label="Files">
-                    <FolderOpen className="size-3.5" />
-                  </ToggleGroupItem>
-                }
-              />
-              <TooltipContent>
-                Files <BoundShortcut settingsKey="sidebarFiles" variant="badge" />
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <ToggleGroupItem size="icon-sm" value="conversations" aria-label="Conversations">
-                    <Clock className="size-3.5" />
-                  </ToggleGroupItem>
-                }
-              />
-              <TooltipContent>
-                Conversations <BoundShortcut settingsKey="sidebarConversations" variant="badge" />
-              </TooltipContent>
-            </Tooltip>
-          </ToggleGroup>
         </div>
       }
     />

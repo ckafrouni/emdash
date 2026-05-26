@@ -11,6 +11,7 @@ import { appState } from '@renderer/lib/stores/app-state';
 import { createTaskCommandProvider } from './commands';
 import { TaskMainPanel } from './main-panel';
 import { TaskTitlebar } from './task-titlebar';
+import { TaskRightSidebar } from './view/task-right-sidebar';
 
 const TaskViewWrapperWithProviders = observer(function TaskViewWrapperWithProviders({
   children,
@@ -55,6 +56,7 @@ export const taskView = {
   WrapView: TaskViewWrapperWithProviders,
   TitlebarSlot: TaskTitlebar,
   MainPanel: TaskMainPanel,
+  RightSidebar: TaskRightSidebar,
   commandProvider: ({ projectId, taskId }: { projectId: string; taskId: string }) =>
     createTaskCommandProvider(projectId, taskId),
   canActivate: (params: unknown): GuardResult => {

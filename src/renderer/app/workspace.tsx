@@ -34,6 +34,12 @@ export function Workspace() {
 }
 
 function WorkspaceViewContent() {
-  const { TitlebarSlot, MainPanel } = useWorkspaceSlots();
-  return <WorkspaceContentLayout titlebarSlot={<TitlebarSlot />} mainPanel={<MainPanel />} />;
+  const { TitlebarSlot, MainPanel, RightSidebar } = useWorkspaceSlots();
+  return (
+    <WorkspaceContentLayout
+      titlebarSlot={<TitlebarSlot />}
+      mainPanel={<MainPanel />}
+      rightSidebar={RightSidebar ? <RightSidebar /> : undefined}
+    />
+  );
 }

@@ -7,12 +7,9 @@ import { EditorFileTree } from '../editor/editor-file-tree';
 
 export const TaskSidebar = observer(function TaskSidebar() {
   const taskView = useWorkspaceViewModel();
-  const { isSidebarCollapsed, sidebarTab: activeTab } = taskView;
+  const activeTab = taskView.sidebarTab;
   return (
-    <div
-      className="h-full min-h-0 overflow-hidden"
-      style={isSidebarCollapsed ? { display: 'none' } : undefined}
-    >
+    <div className="h-full min-h-0 overflow-hidden">
       <ShowHide visible={activeTab === 'conversations'}>
         <SidebarConversationsList />
       </ShowHide>
