@@ -306,7 +306,7 @@ const ActiveTaskTitlebar = observer(function ActiveTaskTitlebar({
               <Toggle
                 size="sm"
                 pressed={!taskView.isSidebarCollapsed}
-                className="border-none"
+                className="border-none bg-transparent hover:bg-background-1 aria-pressed:bg-transparent aria-pressed:hover:bg-background-1 data-pressed:bg-transparent data-pressed:hover:bg-background-1"
                 aria-label="Toggle right sidebar"
                 onPressedChange={() => taskView.setSidebarCollapsed(!taskView.isSidebarCollapsed)}
               >

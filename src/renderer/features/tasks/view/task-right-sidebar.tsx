@@ -14,7 +14,7 @@ interface TabSpec {
 const TABS: readonly TabSpec[] = [
   { value: 'changes', label: 'Changes' },
   { value: 'files', label: 'Files' },
-  { value: 'conversations', label: 'Conversations' },
+  { value: 'conversations', label: 'Agents' },
 ];
 
 export const TaskRightSidebar = observer(function TaskRightSidebar() {

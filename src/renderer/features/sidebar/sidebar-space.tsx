@@ -13,7 +13,7 @@ export function SidebarSpace() {
       <Tooltip>
         <TooltipTrigger>
           <Toggle
-            className="size-7 border-none bg-background-tertiary-3 [-webkit-app-region:no-drag] hover:bg-background-tertiary-3 data-pressed:bg-background-tertiary-2"
+            className="size-7 border-none bg-transparent [-webkit-app-region:no-drag] hover:bg-background-1 aria-pressed:bg-transparent aria-pressed:hover:bg-background-1 data-pressed:bg-transparent data-pressed:hover:bg-background-1"
             variant="outline"
             size="sm"
             pressed={isLeftOpen}
