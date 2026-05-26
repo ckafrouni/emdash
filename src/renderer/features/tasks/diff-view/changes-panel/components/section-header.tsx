@@ -28,10 +28,6 @@ export function SectionHeader({
 
   const labelContent = (
     <span className="flex min-w-0 items-center gap-2 text-sm text-foreground-muted">
-      <span className="truncate">{label}</span>{' '}
-      <Badge variant="secondary" className="shrink-0">
-        {count}
-      </Badge>
       {isCollapsible && (
         <span className="text-foreground-muted hover:text-foreground">
           <ChevronDown
@@ -42,11 +38,20 @@ export function SectionHeader({
           />
         </span>
       )}
+      <span className="truncate">{label}</span>{' '}
+      <Badge variant="secondary" className="shrink-0">
+        {count}
+      </Badge>
     </span>
   );
 
   return (
-    <div className="h-header-row flex shrink-0 items-center justify-between gap-2 px-3.5">
+    <div
+      className={cn(
+        'h-header-row flex shrink-0 items-center justify-between gap-2 px-3.5',
+        collapsed && 'border-t border-border'
+      )}
+    >
       {isCollapsible ? (
         <button onClick={onToggleCollapsed} className="min-w-0">
           {labelContent}

@@ -1,6 +1,7 @@
 import { observer } from 'mobx-react-lite';
 import { useWorkspace, useWorkspaceViewModel } from '@renderer/features/tasks/task-view-context';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@renderer/lib/ui/resizable';
+import { cn } from '@renderer/utils/utils';
 import { ChangesSection } from './changes-section';
 import { SECTION_HEADER_HEIGHT, usePanelLayout } from './hooks/use-panel-layout';
 import { PullRequestsSection } from './pr-section';
@@ -33,7 +34,11 @@ export const ChangesPanel = observer(function ChangesPanel() {
         >
           <ChangesSection />
         </ResizablePanel>
-        <ResizableHandle disabled={!expanded.pullRequests} {...pointerHandlers} />
+        <ResizableHandle
+          disabled={!expanded.pullRequests}
+          className={cn(!expanded.pullRequests && 'hidden')}
+          {...pointerHandlers}
+        />
         <ResizablePanel
           id="changes-pr"
           panelRef={prRef}

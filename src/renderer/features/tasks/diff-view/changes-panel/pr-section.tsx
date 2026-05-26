@@ -1,20 +1,12 @@
-import { Plus, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { getPrSyncStore } from '@renderer/features/projects/stores/project-selectors';
 import { rpc } from '@renderer/lib/ipc';
-import { useShowModal } from '@renderer/lib/modal/modal-provider';
 import { Button } from '@renderer/lib/ui/button';
 import { EmptyState } from '@renderer/lib/ui/empty-state';
-import { SplitButton, type SplitButtonAction } from '@renderer/lib/ui/split-button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/lib/ui/tooltip';
 import { cn } from '@renderer/utils/utils';
-import { getRegisteredTaskData } from '../../stores/task-selectors';
-import {
-  useTaskViewContext,
-  useWorkspace,
-  useWorkspaceId,
-  useWorkspaceViewModel,
-} from '../../task-view-context';
+import { useTaskViewContext, useWorkspace, useWorkspaceViewModel } from '../../task-view-context';
 import { ChangesViewModeToggle } from './components/changes-view-mode-toggle';
 import { PullRequestEntry } from './components/pr-entry/pr-entry';
 import { SectionHeader } from './components/section-header';
@@ -27,54 +19,17 @@ export const PullRequestsSection = observer(function PullRequestsSection({
   collapsed: boolean;
   onToggleCollapsed: () => void;
 }) {
-  const { projectId, taskId } = useTaskViewContext();
-  const workspaceId = useWorkspaceId();
+  const { projectId } = useTaskViewContext();
   const workspace = useWorkspace();
   const taskView = useWorkspaceViewModel();
   const prStore = taskView.prStore;
   const repositoryUrl = workspace.repository.pullRequestRepositoryUrl;
-  const taskBranch = getRegisteredTaskData(projectId, taskId)?.taskBranch;
   const pullRequests = prStore?.pullRequests ?? [];
   const currentPr = prStore?.currentPr;
-  const showCreatePrModal = useShowModal('createPrModal');
 
-  const hasOpenPr = pullRequests.some((p) => p.status === 'open');
   const isRefreshing = repositoryUrl
     ? (getPrSyncStore(projectId)?.isSyncing(repositoryUrl) ?? false)
     : false;
-
-  const onCreatePr =
-    taskBranch && repositoryUrl
-      ? () =>
-          showCreatePrModal({
-            projectId,
-            taskId,
-            repositoryUrl: repositoryUrl ?? '',
-            branchName: taskBranch,
-            draft: false,
-            workspaceId,
-            onSuccess: () => {},
-          })
-      : undefined;
-
-  const onCreateDraftPr =
-    taskBranch && repositoryUrl
-      ? () =>
-          showCreatePrModal({
-            projectId,
-            taskId,
-            repositoryUrl: repositoryUrl ?? '',
-            branchName: taskBranch,
-            draft: true,
-            workspaceId,
-            onSuccess: () => {},
-          })
-      : undefined;
-
-  const prActions: SplitButtonAction[] = [
-    { value: 'create-pr', label: 'Create PR', action: () => onCreatePr?.() },
-    { value: 'create-draft-pr', label: 'Create draft PR', action: () => onCreateDraftPr?.() },
-  ];
 
   const { mode: viewMode, setMode: setViewMode } = useChangesViewMode('pr');
 
@@ -92,20 +47,6 @@ export const PullRequestsSection = observer(function PullRequestsSection({
               onChange={setViewMode}
               label="Pull request files"
             />
-            <Tooltip>
-              <TooltipTrigger>
-                <SplitButton
-                  variant="outline"
-                  size="xs"
-                  actions={prActions}
-                  disabled={hasOpenPr || !onCreatePr || !onCreateDraftPr}
-                  icon={<Plus className="size-3" />}
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                {hasOpenPr ? 'A pull request is already open' : 'Create a pull request'}
-              </TooltipContent>
-            </Tooltip>
             <Tooltip>
               <TooltipTrigger>
                 <Button
