@@ -113,7 +113,7 @@ export function WorkspaceContentLayout({
         <ResizablePanel
           id="workspace-content-right"
           panelRef={rightSidebarPanelRef}
-          defaultSize="25%"
+          defaultSize="40%"
           minSize="280px"
           maxSize="50%"
           collapsible
