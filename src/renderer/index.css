@@ -131,6 +131,14 @@
   }
 }
 
+:root {
+  /* Shared height for primary header / toolbar rows. Single source of truth
+     lives in src/renderer/lib/ui/layout-constants.ts, which overwrites this
+     custom property on import. The literal here is the first-paint fallback
+     and should mirror HEADER_ROW_HEIGHT_PX. Used via `.h-header-row` below. */
+  --header-row-height: 36px;
+}
+
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -752,6 +760,10 @@
 }
 
 @layer components {
+  .h-header-row {
+    height: var(--header-row-height);
+  }
+
   .logo-shimmer-container {
     position: relative;
     display: inline-block;

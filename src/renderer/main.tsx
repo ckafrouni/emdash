@@ -4,6 +4,7 @@ import { setupAppCommandProvider } from '@renderer/lib/commands/app-commands';
 import './index.css';
 import 'devicon/devicon.min.css';
 import 'katex/dist/katex.min.css';
+import '@renderer/lib/ui/layout-constants';
 import { setupViewCommandProvider } from '@renderer/lib/commands/registry';
 import { wireCommitHistoryInvalidation } from '@renderer/lib/commit-history-invalidation';
 import { rpc } from '@renderer/lib/ipc';

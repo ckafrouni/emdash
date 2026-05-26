@@ -1,10 +1,10 @@
 import {
   ChevronDown,
   ChevronUp,
-  Pause,
   Play,
   Plus,
   Settings,
+  Square,
   SquareTerminal,
   X,
   type LucideIcon,
@@ -18,16 +18,9 @@ import {
 } from '@renderer/features/tasks/stores/lifecycle-scripts';
 import { type TerminalTabViewStore } from '@renderer/features/tasks/terminals/terminal-tab-view-store';
 import { useNavigate } from '@renderer/lib/layout/navigation-provider';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@renderer/lib/ui/dropdown-menu';
 import { BoundShortcut } from '@renderer/lib/ui/shortcut';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/lib/ui/tooltip';
 import { cn } from '@renderer/utils/utils';
-import { scriptIcon } from './terminal-tabs';
 
 interface TerminalTopTabsProps {
   projectId: string;
@@ -74,29 +67,24 @@ export const TerminalTopTabs = observer(function TerminalTopTabs({
   return (
     <div
       className={cn(
-        'flex h-10 shrink-0 items-stretch bg-background-2 text-xs',
-        !isOpen && 'border-t border-border-1',
+        'h-header-row flex shrink-0 items-stretch bg-background-2 text-xs',
+        !isOpen && 'border-t border-border',
         className
       )}
     >
       {scripts.length > 0 && (
         <div className="flex shrink-0 items-stretch">
-          <PinnedScriptTab
-            scripts={scripts}
-            selectedScript={
-              scripts.find((s) => s.data.id === lifecycleScriptsMgr?.activeTabId) ?? scripts[0]
-            }
-            isActive={
-              activeScriptId !== undefined &&
-              activeScriptId ===
-                (scripts.find((s) => s.data.id === lifecycleScriptsMgr?.activeTabId) ?? scripts[0])
-                  .data.id
-            }
-            isOpen={isOpen}
-            onSelectScript={onSelectScript}
-            onRunScript={onRunScript}
-            onStopScript={onStopScript}
-          />
+          {scripts.map((script) => (
+            <LifecycleScriptTab
+              key={script.data.id}
+              script={script}
+              isActive={activeScriptId === script.data.id}
+              isOpen={isOpen}
+              onSelect={() => onSelectScript(script.data.id)}
+              onRun={() => onRunScript(script.data.id)}
+              onStop={() => onStopScript(script.data.id)}
+            />
+          ))}
         </div>
       )}
       <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
@@ -140,13 +128,13 @@ export const TerminalTopTabs = observer(function TerminalTopTabs({
             if (e.target !== e.currentTarget) return;
             onAddTerminal();
           }}
-          className={cn('min-w-4 flex-1', isOpen && 'border-b border-border-1')}
+          className={cn('min-w-4 flex-1', isOpen && 'border-b border-border')}
         />
       </div>
       <div
         className={cn(
           'flex shrink-0 items-center gap-0.5 px-1.5',
-          isOpen && 'border-b border-border-1'
+          isOpen && 'border-b border-border'
         )}
       >
         <Tooltip>
@@ -201,6 +189,7 @@ interface TopTabProps {
   icon?: LucideIcon;
   iconNode?: ReactNode;
   label: string;
+  labelClassName?: string;
   isActive: boolean;
   isOpen: boolean;
   onSelect: () => void;
@@ -214,6 +203,7 @@ function TopTab({
   icon: Icon,
   iconNode,
   label,
+  labelClassName,
   isActive,
   isOpen,
   onSelect,
@@ -236,13 +226,13 @@ function TopTab({
         setIsEditing(true);
       }}
       className={cn(
-        'group/tab relative flex h-full max-w-[220px] min-w-[120px] cursor-pointer items-center gap-1.5 px-3',
-        !hideBorderRight && 'border-r border-border-1',
+        'group/tab relative flex h-full max-w-[220px] min-w-[90px] cursor-pointer items-center gap-1.5 px-2.5',
+        !hideBorderRight && 'border-r border-border',
         isActive
           ? 'bg-background text-foreground'
           : cn(
               'bg-background-2 text-foreground-muted hover:bg-background-3 hover:text-foreground',
-              isOpen && 'border-b border-border-1'
+              isOpen && 'border-b border-border'
             )
       )}
     >
@@ -261,7 +251,7 @@ function TopTab({
           onCancel={() => setIsEditing(false)}
         />
       ) : (
-        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <span className={cn('min-w-0 flex-1 truncate', labelClassName)}>{label}</span>
       )}
       {trailing}
     </div>
@@ -307,110 +297,55 @@ function InlineRenameInput({
   );
 }
 
-const PinnedScriptTab = observer(function PinnedScriptTab({
-  scripts,
-  selectedScript,
+const LifecycleScriptTab = observer(function LifecycleScriptTab({
+  script,
   isActive,
   isOpen,
-  onSelectScript,
-  onRunScript,
-  onStopScript,
+  onSelect,
+  onRun,
+  onStop,
 }: {
-  scripts: LifecycleScriptStore[];
-  selectedScript: LifecycleScriptStore;
+  script: LifecycleScriptStore;
   isActive: boolean;
   isOpen: boolean;
-  onSelectScript: (id: string) => void;
-  onRunScript: (id: string) => void;
-  onStopScript: (id: string) => void;
+  onSelect: () => void;
+  onRun: () => void;
+  onStop: () => void;
 }) {
   return (
-    <>
-      <TopTab
-        label={selectedScript.data.label}
-        isActive={isActive}
-        isOpen={isOpen}
-        onSelect={() => onSelectScript(selectedScript.data.id)}
-        hideBorderRight={scripts.length > 1}
-        trailing={
-          <Tooltip>
-            <TooltipTrigger>
-              <button
-                aria-label={selectedScript.isRunning ? 'Stop script' : 'Run script'}
-                className="flex size-4 shrink-0 items-center justify-center rounded text-foreground-muted hover:bg-background-3 hover:text-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (selectedScript.isRunning) {
-                    onStopScript(selectedScript.data.id);
-                  } else {
-                    onRunScript(selectedScript.data.id);
-                  }
-                }}
-              >
-                {selectedScript.isRunning ? (
-                  <Pause className="size-3" />
-                ) : (
-                  <Play className="size-3" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{selectedScript.isRunning ? 'Stop' : 'Run'}</TooltipContent>
-          </Tooltip>
-        }
-      />
-      {scripts.length > 1 && (
-        <ScriptSwitcher
-          scripts={scripts}
-          isActive={isActive}
-          isOpen={isOpen}
-          onSelectScript={onSelectScript}
-        />
-      )}
-    </>
+    <TopTab
+      label={script.data.label}
+      labelClassName={script.isRunning ? 'text-foreground-info' : undefined}
+      isActive={isActive}
+      isOpen={isOpen}
+      onSelect={onSelect}
+      trailing={
+        <Tooltip>
+          <TooltipTrigger>
+            <button
+              aria-label={script.isRunning ? 'Stop script' : 'Run script'}
+              className={cn(
+                'flex size-4 shrink-0 items-center justify-center rounded hover:bg-background-3',
+                script.isRunning
+                  ? 'text-foreground-error hover:text-foreground-error'
+                  : 'text-foreground-muted hover:text-foreground'
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (script.isRunning) onStop();
+                else onRun();
+              }}
+            >
+              {script.isRunning ? (
+                <Square className="size-3 fill-current" />
+              ) : (
+                <Play className="size-3" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{script.isRunning ? 'Stop' : 'Run'}</TooltipContent>
+        </Tooltip>
+      }
+    />
   );
 });
-
-function ScriptSwitcher({
-  scripts,
-  isActive,
-  isOpen,
-  onSelectScript,
-}: {
-  scripts: LifecycleScriptStore[];
-  isActive: boolean;
-  isOpen: boolean;
-  onSelectScript: (id: string) => void;
-}) {
-  return (
-    <div
-      className={cn(
-        'flex h-full items-center border-r border-border-1 px-1',
-        isActive ? 'bg-background' : cn('bg-background-2', isOpen && 'border-b border-border-1')
-      )}
-    >
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <button
-              aria-label="Switch script"
-              className="flex size-5 items-center justify-center rounded text-foreground-muted hover:bg-background-3 hover:text-foreground data-popup-open:bg-background-3 data-popup-open:text-foreground"
-            />
-          }
-        >
-          <ChevronDown className="size-3" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {scripts.map((s) => (
-            <DropdownMenuItem key={s.data.id} onClick={() => onSelectScript(s.data.id)}>
-              <span className="flex items-center gap-2">
-                <span className="text-foreground-muted">{scriptIcon(s.data.type)}</span>
-                <span>{s.data.label}</span>
-                {s.isRunning && <span className="text-xs text-foreground-muted">(running)</span>}
-              </span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-}

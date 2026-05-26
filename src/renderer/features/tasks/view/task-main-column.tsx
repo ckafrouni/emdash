@@ -10,6 +10,7 @@ import { observer } from 'mobx-react-lite';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
 import { panelDragStore } from '@renderer/lib/layout/panel-drag-store';
+import { HEADER_ROW_HEIGHT_CSS } from '@renderer/lib/ui/layout-constants';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@renderer/lib/ui/resizable';
 import { TabGroupProvider } from '../tabs/tab-group-context';
 import { useTaskViewContext, useWorkspaceViewModel } from '../task-view-context';
@@ -40,7 +41,7 @@ export const TaskMainColumn = observer(function TaskMainColumn() {
         id="task-terminal-drawer"
         panelRef={bottomPanelRef}
         collapsible
-        collapsedSize="40px"
+        collapsedSize={HEADER_ROW_HEIGHT_CSS}
         defaultSize="25%"
         minSize="15%"
         onResize={(_panelSize, _id, prevPanelSize) => {

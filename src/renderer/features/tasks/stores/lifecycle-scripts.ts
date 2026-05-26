@@ -15,6 +15,7 @@ import { ptyExitChannel } from '@shared/events/ptyEvents';
 import { PROJECT_CONFIG_FILE } from '@shared/project-settings';
 import { makePtySessionId } from '@shared/ptySessionId';
 import { createLifecycleScriptTerminalId } from '@shared/terminals';
+import { markRunScriptExited, markRunScriptRunning } from './running-lifecycle-store';
 
 export type ScriptType = 'setup' | 'run' | 'teardown';
 
@@ -29,10 +30,12 @@ export class LifecycleScriptStore {
   data: LifecycleScriptData;
   session: PtySession;
   isRunning = false;
+  readonly workspaceId: string;
   private offPtyExit: (() => void) | null = null;
 
   constructor(data: LifecycleScriptData, projectId: string, workspaceId: string) {
     this.data = data;
+    this.workspaceId = workspaceId;
     this.session = new PtySession(makePtySessionId(projectId, workspaceId, data.id));
     this.offPtyExit = events.on(ptyExitChannel, () => this.markExited(), this.session.sessionId);
     makeObservable(this, {
@@ -46,13 +49,16 @@ export class LifecycleScriptStore {
 
   markRunning(): void {
     this.isRunning = true;
+    if (this.data.type === 'run') markRunScriptRunning(this.workspaceId);
   }
 
   markExited(): void {
     this.isRunning = false;
+    if (this.data.type === 'run') markRunScriptExited(this.workspaceId);
   }
 
   dispose() {
+    this.markExited();
     this.offPtyExit?.();
     this.offPtyExit = null;
     this.session.dispose();

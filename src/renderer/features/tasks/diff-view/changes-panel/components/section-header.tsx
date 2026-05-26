@@ -25,7 +25,7 @@ export function SectionHeader({
 }: SectionHeaderProps) {
   const showCheckbox = selectionState !== undefined && onToggleAll !== undefined;
   return (
-    <div className="flex h-10 shrink-0 items-center justify-between gap-2 px-3.5">
+    <div className="h-header-row flex shrink-0 items-center justify-between gap-2 px-3.5">
       <button onClick={onToggleCollapsed} className="min-w-0">
         <span className="flex min-w-0 items-center gap-2 text-sm text-foreground-muted">
           <span className="truncate">{label}</span>{' '}

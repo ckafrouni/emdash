@@ -92,7 +92,10 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
   const handleStopScript = (id: string) => {
     const script = lifecycleScriptsMgr?.tabs.find((s) => s.data.id === id);
     if (!script) return;
+    // Ctrl+C interrupts the foreground process, but the shell stays alive so
+    // ptyExit never fires — mark exited here so the UI reflects the intent.
     void rpc.pty.sendInput(script.session.sessionId, '\x03');
+    script.markExited();
   };
 
   const emptyState = (

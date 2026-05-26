@@ -86,6 +86,9 @@ export const TerminalPtyContent = observer(function TerminalPtyContent({
     <div
       ref={containerRef}
       tabIndex={-1}
+      // Marks the bottom-drawer terminals so Cmd+K clears the buffer here only
+      // (not in agent terminals). See use-pty.ts and app-keyboard-shortcuts.tsx.
+      data-clear-on-cmd-k
       className={cn('flex h-full flex-col outline-none', className)}
       onFocus={() => onFocusChange?.(true)}
       onBlur={(e) => {

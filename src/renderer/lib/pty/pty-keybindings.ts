@@ -76,6 +76,23 @@ export function shouldKillLineFromTerminal(event: KeyEventLike, isMacPlatform: b
 }
 
 /**
+ * Detect the "clear terminal" shortcut (Cmd+K on macOS, Ctrl+K elsewhere).
+ *
+ * Matches the default `commandPalette` shortcut so when the user presses it
+ * while the terminal has focus we clear the buffer instead of opening the
+ * command palette — mirroring Terminal.app, iTerm2, and VS Code conventions.
+ */
+export function shouldClearTerminalScreen(event: KeyEventLike, isMacPlatform: boolean): boolean {
+  if (event.type !== 'keydown') return false;
+  if (event.key.toLowerCase() !== 'k') return false;
+  if (event.shiftKey || event.altKey) return false;
+
+  return isMacPlatform
+    ? event.metaKey === true && !event.ctrlKey
+    : event.ctrlKey === true && !event.metaKey;
+}
+
+/**
  * Detect paste shortcut for the terminal.
  * - Windows: Ctrl+V (native convention) and Ctrl+Shift+V both paste from clipboard.
  * - Linux: Ctrl+Shift+V (standard Linux terminal convention).

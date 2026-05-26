@@ -95,7 +95,7 @@ export const LeftSidebar: React.FC = observer(function LeftSidebar() {
             </SidebarMenuButton>
           </SidebarMenu>
         </SidebarFooter>
-        <div className="flex h-10 items-center justify-between gap-2 border-t border-border px-3">
+        <div className="h-header-row flex items-center justify-between gap-2 border-t border-border px-3">
           <button
             type="button"
             className="flex h-full w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-foreground-muted focus:outline-none focus-visible:outline-none"

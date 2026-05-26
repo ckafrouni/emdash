@@ -14,6 +14,7 @@ import { isRealTaskInput, SubmittedInputBuffer } from './pty-input-buffer';
 import {
   CTRL_J_ASCII,
   CTRL_U_ASCII,
+  shouldClearTerminalScreen,
   shouldCopySelectionFromTerminal,
   shouldHandleInterruptFromTerminal,
   shouldKillLineFromTerminal,
@@ -451,6 +452,17 @@ export function usePty(
           event.stopImmediatePropagation();
           event.stopPropagation();
           sendInput(CTRL_U_ASCII);
+          return false;
+        }
+
+        if (
+          shouldClearTerminalScreen(event, IS_MAC_PLATFORM) &&
+          containerRef.current?.closest('[data-clear-on-cmd-k]')
+        ) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          event.stopPropagation();
+          terminal.clear();
           return false;
         }
 

@@ -44,12 +44,17 @@ export function AppKeyboardShortcuts() {
 
   useHotkey(
     getHotkeyRegistration('commandPalette', keyboard),
-    () =>
+    () => {
+      // When focus is in the bottom-drawer terminals, Cmd+K clears the buffer
+      // instead of opening the palette — see use-pty.ts. Agent terminals do
+      // not have this marker, so the palette still opens there.
+      if (document.activeElement?.closest('[data-clear-on-cmd-k]')) return;
       showCommandPalette({
         projectId: currentProjectId,
         taskId: currentTaskId,
         workspaceId: currentWorkspaceId,
-      }),
+      });
+    },
     { enabled: commandPaletteHotkey !== null }
   );
 

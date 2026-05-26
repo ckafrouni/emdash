@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite';
 import { TaskSidebarAgentStatus } from '@renderer/features/sidebar/task-sidebar-agent-status';
 import { TaskContextMenu } from '@renderer/features/tasks/components/task-context-menu';
 import { TaskGitDiffStats } from '@renderer/features/tasks/components/task-git-diff-stats';
+import { isRunScriptRunning } from '@renderer/features/tasks/stores/running-lifecycle-store';
 import {
   getTaskGitStore,
   getTaskManagerStore,
@@ -50,6 +51,7 @@ export const SidebarTaskItem = observer(function SidebarTaskItem({
       (task.phase === 'provision' || task.phase === 'provision-error'));
 
   const taskName = task.data.name;
+  const isServerRunning = Boolean(task.workspaceId && isRunScriptRunning(task.workspaceId));
 
   const handleProvision = () => {
     if (task.state !== 'unprovisioned' || task.phase !== 'idle') return;
@@ -111,8 +113,10 @@ export const SidebarTaskItem = observer(function SidebarTaskItem({
           <span
             className={cn(
               'min-w-0 truncate text-left transition-colors',
-              isBootstrapping && 'text-foreground/40'
+              isBootstrapping && 'text-foreground/40',
+              isServerRunning && !isBootstrapping && 'text-foreground-info'
             )}
+            title={isServerRunning ? 'Run script is running' : undefined}
           >
             {taskName}
           </span>
