@@ -1,4 +1,4 @@
-import { Minus, Plus, Undo2 } from 'lucide-react';
+import { ChevronDown, Minus, Plus, Undo2 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useMemo, useState } from 'react';
 import {
@@ -9,8 +9,13 @@ import {
 } from '@renderer/features/tasks/task-view-context';
 import { useShowModal } from '@renderer/lib/modal/modal-provider';
 import { Button } from '@renderer/lib/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@renderer/lib/ui/dropdown-menu';
 import { EmptyState } from '@renderer/lib/ui/empty-state';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@renderer/lib/ui/select';
 import { commitRef, HEAD_REF, type Commit, type GitChange } from '@shared/git';
 import type { ActiveFile } from '@shared/view-state';
 import { ActionCard } from './components/action-card';
@@ -30,22 +35,10 @@ interface CombinedChange extends GitChange {
   hasUnstaged: boolean;
 }
 
-type ChangesSource = { kind: 'all' } | { kind: 'uncommitted' } | { kind: 'commit'; hash: string };
-
-const COMMIT_VALUE_PREFIX = 'commit:';
-
-function encodeSource(source: ChangesSource): string {
-  if (source.kind === 'commit') return `${COMMIT_VALUE_PREFIX}${source.hash}`;
-  return source.kind;
-}
-
-function decodeSource(value: string): ChangesSource {
-  if (value === 'uncommitted') return { kind: 'uncommitted' };
-  if (value.startsWith(COMMIT_VALUE_PREFIX)) {
-    return { kind: 'commit', hash: value.slice(COMMIT_VALUE_PREFIX.length) };
-  }
-  return { kind: 'all' };
-}
+type ChangesSource =
+  | { kind: 'commits' }
+  | { kind: 'uncommitted' }
+  | { kind: 'commit'; hash: string };
 
 function shortHash(hash: string): string {
   return hash.slice(0, 7);
@@ -64,7 +57,7 @@ export const ChangesSection = observer(function ChangesSection() {
   const diffView = taskView.diffView;
   const changesView = diffView?.changesView;
 
-  const [source, setSource] = useState<ChangesSource>({ kind: 'all' });
+  const [source, setSource] = useState<ChangesSource>({ kind: 'commits' });
 
   const baseRef = workspace.repository.baseRef;
   const branchCommitsQuery = useBranchCommits(projectId, workspaceId, baseRef);
@@ -205,17 +198,15 @@ export const ChangesSection = observer(function ChangesSection() {
         commitModifiedSha: source.hash,
       };
     }
-    // "all" — compare the branch base against the working tree. Files with
-    // local edits keep the working-tree side; everything else is a pure
-    // ref-to-ref diff (no modifiedRef, the diff viewer falls back to HEAD).
+    // "commits" — merge-base diff base...HEAD, committed only. Uncommitted
+    // edits live in the separate Uncommitted tab.
     if (!baseRef) return undefined;
-    const m = meta(change.path);
-    const hasWorkingTreeEdits = Boolean(m?.hasUnstaged);
     return {
       path: change.path,
-      type: hasWorkingTreeEdits ? 'disk' : 'git',
-      group: hasWorkingTreeEdits ? 'disk' : 'git',
+      type: 'git',
+      group: 'git',
       originalRef: commitRef(baseRef),
+      modifiedRef: commitRef('HEAD'),
     };
   };
 
@@ -284,39 +275,59 @@ export const ChangesSection = observer(function ChangesSection() {
   const hasStagedAny = git.stagedFileChanges.length > 0;
   const selectedCount = combinedChanges.filter((c) => isSelected(c.path)).length;
 
+  const commitsLabel = source.kind === 'commit' ? shortHash(source.hash) : 'Commits';
+  const commitsActive = !isUncommittedMode;
+
   const labelSlot = (
-    <Select
-      value={encodeSource(source)}
-      onValueChange={(v) => {
-        if (typeof v === 'string') setSource(decodeSource(v));
-      }}
-    >
-      <SelectTrigger size="sm" className="h-7 w-auto gap-1.5 border-0 px-2 hover:bg-background-2">
-        <span className="truncate text-sm">
-          {source.kind === 'all'
-            ? 'All'
-            : source.kind === 'uncommitted'
-              ? 'Uncommitted'
-              : shortHash(source.hash)}
-        </span>
-      </SelectTrigger>
-      <SelectContent className="min-w-56">
-        <SelectItem value="all">
-          <span className="truncate">All</span>
-        </SelectItem>
-        <SelectItem value="uncommitted">
-          <span className="truncate">Uncommitted</span>
-        </SelectItem>
-        {branchCommits.map((c) => (
-          <SelectItem key={c.hash} value={`${COMMIT_VALUE_PREFIX}${c.hash}`}>
-            <span className="truncate">{commitLabel(c)}</span>
-            <span className="ml-2 shrink-0 font-mono text-xs text-foreground-muted">
-              {shortHash(c.hash)}
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex items-center gap-0.5">
+      <Button
+        size="xs"
+        variant={isUncommittedMode ? 'secondary' : 'ghost'}
+        onClick={() => setSource({ kind: 'uncommitted' })}
+      >
+        Uncommitted
+      </Button>
+      <div className="flex items-center">
+        <Button
+          size="xs"
+          variant={commitsActive ? 'secondary' : 'ghost'}
+          onClick={() => setSource({ kind: 'commits' })}
+          className="rounded-r-none pr-1"
+        >
+          <span className="truncate">{commitsLabel}</span>
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                size="xs"
+                variant={commitsActive ? 'secondary' : 'ghost'}
+                aria-label="Pick commit"
+                className="rounded-l-none px-1"
+              >
+                <ChevronDown className="size-3" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="start" className="min-w-56">
+            <DropdownMenuItem onClick={() => setSource({ kind: 'commits' })}>
+              All commits
+            </DropdownMenuItem>
+            {branchCommits.map((c) => (
+              <DropdownMenuItem
+                key={c.hash}
+                onClick={() => setSource({ kind: 'commit', hash: c.hash })}
+              >
+                <span className="truncate">{commitLabel(c)}</span>
+                <span className="ml-auto shrink-0 pl-2 font-mono text-xs text-foreground-muted">
+                  {shortHash(c.hash)}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   );
 
   const emptyStateForMode = () => {
