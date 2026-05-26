@@ -6,13 +6,11 @@ import type {
 } from '@renderer/features/tasks/diff-view/stores/changes-view-store';
 import { HEADER_ROW_HEIGHT_CSS } from '@renderer/lib/ui/layout-constants';
 
-// Unreachable in practice: callers guard with `if (!changesView) return null` before calling this
-// hook, so changesView is always non-null here. React Hooks rules prevent a conditional call.
 const DEFAULT_EXPANDED: ExpandedSections = { unstaged: true, staged: true, pullRequests: true };
 
 export const SECTION_HEADER_HEIGHT = HEADER_ROW_HEIGHT_CSS;
 
-type usePanelLayoutReturn = {
+type UsePanelLayoutReturn = {
   expanded: ExpandedSections;
   toggleExpanded: (section: keyof ExpandedSections) => void;
   setExpanded: (next: ExpandedSections | ((prev: ExpandedSections) => ExpandedSections)) => void;
@@ -22,18 +20,16 @@ type usePanelLayoutReturn = {
     onPointerUp: () => void;
     onPointerCancel: () => void;
   };
-  unstagedRef: ReturnType<typeof usePanelRef>;
-  stagedRef: ReturnType<typeof usePanelRef>;
   prRef: ReturnType<typeof usePanelRef>;
-  spacerRef: ReturnType<typeof usePanelRef>;
 };
 
-export function usePanelLayout(changesView: ChangesViewStore | null): usePanelLayoutReturn {
-  const unstagedRef = usePanelRef();
-  const stagedRef = usePanelRef();
+/**
+ * Lightweight panel-layout hook for the changes sidebar. Only the PR section
+ * is collapsible now; the changes section above it is non-collapsible and
+ * takes the remaining space.
+ */
+export function usePanelLayout(changesView: ChangesViewStore | null): UsePanelLayoutReturn {
   const prRef = usePanelRef();
-  const spacerRef = usePanelRef();
-
   const [isDragging, setIsDragging] = useState(false);
 
   const panelTransitionClass = !isDragging && '[transition:flex-basis_200ms_ease-in-out]';
@@ -49,25 +45,12 @@ export function usePanelLayout(changesView: ChangesViewStore | null): usePanelLa
   const expanded = changesView?.expandedSections ?? DEFAULT_EXPANDED;
 
   useLayoutEffect(() => {
-    const sections = [
-      { key: 'unstaged' as const, ref: unstagedRef },
-      { key: 'staged' as const, ref: stagedRef },
-      { key: 'pullRequests' as const, ref: prRef },
-    ];
-
-    const expandedCount = sections.filter((s) => expanded[s.key]).length;
-    const share = expandedCount > 0 ? `${100 / expandedCount}%` : '0%';
-
-    spacerRef.current?.resize(expandedCount === 0 ? '100%' : '0%');
-
-    sections.forEach(({ key, ref }) => {
-      if (expanded[key]) {
-        ref.current?.resize(share);
-      } else {
-        ref.current?.collapse();
-      }
-    });
-  }, [expanded, unstagedRef, stagedRef, prRef, spacerRef]);
+    if (expanded.pullRequests) {
+      prRef.current?.expand();
+    } else {
+      prRef.current?.collapse();
+    }
+  }, [expanded.pullRequests, prRef]);
 
   return {
     expanded,
@@ -75,9 +58,6 @@ export function usePanelLayout(changesView: ChangesViewStore | null): usePanelLa
     setExpanded: (next) => changesView?.setExpanded(next),
     panelTransitionClass,
     pointerHandlers,
-    unstagedRef,
-    stagedRef,
     prRef,
-    spacerRef,
   };
 }
